@@ -49,6 +49,7 @@ export default function App() {
       const saved = localStorage.getItem('global_survey_users');
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
+      console.error("Failed to load users", e);
       return [];
     }
   });
@@ -63,22 +64,60 @@ export default function App() {
     }
   });
 
-  // Determine initial view based on auth state
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'dashboard'>(() => {
-    return localStorage.getItem('global_survey_current_user') ? 'dashboard' : 'login';
+  // Capture referral code from URL on mount
+  const [referralCode, setReferralCode] = useState<string | null>(() => {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('ref');
   });
+
+  // Determine initial view based on auth state AND referral
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'dashboard'>(() => {
+    // Priority 1: If logged in, go to dashboard
+    if (localStorage.getItem('global_survey_current_user')) return 'dashboard';
+    
+    // Priority 2: If referral link used, go to register
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ref')) return 'register';
+    
+    // Priority 3: Default to login
+    return 'login';
+  });
+
+  // Clean up URL if ref exists to keep the address bar clean (optional UX preference)
+  useEffect(() => {
+      if (referralCode) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('ref');
+          window.history.replaceState({}, '', url.toString());
+      }
+  }, [referralCode]);
 
   // Persist registered users whenever they change
   useEffect(() => {
-    localStorage.setItem('global_survey_users', JSON.stringify(registeredUsers));
+    try {
+      localStorage.setItem('global_survey_users', JSON.stringify(registeredUsers));
+    } catch (e) {
+      console.error("Failed to save users database:", e);
+      // If it's a quota error, we might want to alert the user
+      if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+          alert("Storage Limit Reached: Your profile changes (like images) may not be saved permanently. Please try a smaller image.");
+      }
+    }
   }, [registeredUsers]);
 
   // Persist current user session whenever it changes
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('global_survey_current_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('global_survey_current_user');
+    try {
+      if (currentUser) {
+        localStorage.setItem('global_survey_current_user', JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem('global_survey_current_user');
+      }
+    } catch (e) {
+       console.error("Failed to save session:", e);
+       if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+          // Alert handled in the registeredUsers effect usually, but good to be safe
+       }
     }
   }, [currentUser]);
 
@@ -112,7 +151,51 @@ export default function App() {
             language: 'en'
         }
     };
-    setRegisteredUsers(prev => [...prev, userWithDefaults]);
+
+    let updatedUserList = [...registeredUsers, userWithDefaults];
+
+    // Handle Referral Logic
+    if (referralCode && referralCode !== newUser.username) {
+        // Find referrer in the database
+        const referrerIndex = updatedUserList.findIndex(u => u.username === referralCode);
+        
+        if (referrerIndex !== -1) {
+            const referrer = updatedUserList[referrerIndex];
+            
+            // Calculate new stats for referrer
+            const currentStats = referrer.stats || { 
+                earnings: 0, performance: 65, eligibility: 40, surveysCompleted: 0, dailyCount: 0, lastSurveyDate: new Date().toDateString(), dailyEarnings: 0, dailyLimit: 250 
+            };
+            
+            // Credit KES 50
+            const bonus = 50;
+            const newStats = {
+                ...currentStats,
+                earnings: currentStats.earnings + bonus,
+            };
+
+            const newEntry: EarningEntry = {
+                id: Date.now(),
+                date: new Date().toLocaleDateString('en-KE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                amount: bonus,
+                title: `Referral Bonus: ${newUser.username}`
+            };
+
+            // Update referrer object in the list
+            updatedUserList[referrerIndex] = {
+                ...referrer,
+                stats: newStats,
+                earningsHistory: [newEntry, ...(referrer.earningsHistory || [])]
+            };
+            
+            // Edge case: If the referrer happens to be logged in on this same browser
+            if (currentUser && currentUser.username === referralCode) {
+                 setCurrentUser(updatedUserList[referrerIndex]);
+            }
+        }
+    }
+
+    setRegisteredUsers(updatedUserList);
     setCurrentUser(userWithDefaults);
     setCurrentView('dashboard');
   };
@@ -123,7 +206,7 @@ export default function App() {
     // Merge new data into current user
     const updatedUser = { ...currentUser, ...updatedData };
     
-    // Update active session
+    // Update active session immediately
     setCurrentUser(updatedUser);
 
     // Update the master list of users so data persists on next login

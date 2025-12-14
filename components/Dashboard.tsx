@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import { 
   Wallet, 
   PlayCircle, 
@@ -6,28 +6,35 @@ import {
   Settings, 
   HelpCircle, 
   LogOut, 
-  TrendingUp,
-  Award,
-  ChevronRight,
-  Activity,
-  Target,
-  Loader2,
-  MapPin,
-  ExternalLink,
-  History,
-  CheckCircle2,
-  ArrowLeft,
-  ArrowRight,
-  X,
-  Check,
-  Zap,
-  Lock,
-  Clock,
-  Sparkles,
-  CalendarClock,
-  Globe2,
-  CreditCard,
-  Unlock
+  TrendingUp, 
+  Award, 
+  ChevronRight, 
+  Activity, 
+  Target, 
+  Loader2, 
+  MapPin, 
+  ExternalLink, 
+  History, 
+  CheckCircle2, 
+  ArrowLeft, 
+  ArrowRight, 
+  X, 
+  Check, 
+  Zap, 
+  Lock, 
+  Clock, 
+  Sparkles, 
+  CalendarClock, 
+  Globe2, 
+  CreditCard, 
+  Unlock, 
+  Timer, 
+  PauseCircle, 
+  Play, 
+  Share2, 
+  Copy, 
+  MessageCircle, 
+  Smartphone 
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import ProfileForm from './ProfileForm';
@@ -41,7 +48,7 @@ interface DashboardProps {
   onUpdateUser: (data: Partial<UserData>) => void;
 }
 
-type ViewState = 'home' | 'profile' | 'settings' | 'help' | 'history' | 'survey' | 'survey-list' | 'upgrade-limit';
+type ViewState = 'home' | 'profile' | 'settings' | 'help' | 'history' | 'survey' | 'survey-list' | 'upgrade-limit' | 'invite';
 
 interface MapLocation {
   title: string;
@@ -149,10 +156,37 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
   const [isLocating, setIsLocating] = useState(false);
   const [nearbyHotspots, setNearbyHotspots] = useState<{text: string, locations: MapLocation[]} | null>(null);
 
+  // Onboarding Tour State
+  const [tourStep, setTourStep] = useState(0);
+
   useEffect(() => {
     // Persist global stats whenever they change
     localStorage.setItem('global_survey_market_daily', JSON.stringify(globalStats));
   }, [globalStats]);
+
+  useEffect(() => {
+    // Check for onboarding status
+    const hasSeenTour = localStorage.getItem('global_survey_onboarding_completed');
+    if (!hasSeenTour) {
+       // Small delay to ensure rendering is stable before starting tour
+       const timer = setTimeout(() => setTourStep(1), 1500);
+       return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleTourNext = () => {
+    if (tourStep >= 3) {
+        localStorage.setItem('global_survey_onboarding_completed', 'true');
+        setTourStep(0);
+    } else {
+        setTourStep(prev => prev + 1);
+    }
+  };
+
+  const handleTourSkip = () => {
+    localStorage.setItem('global_survey_onboarding_completed', 'true');
+    setTourStep(0);
+  };
 
   const availableSurveys: SurveyOption[] = [
     {
@@ -391,6 +425,7 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
     return (
       <ProfileForm 
         onBack={() => setView('home')} 
+        onHelp={() => setView('help')}
         initialData={currentUser} 
         onUpdateUser={onUpdateUser}
       />
@@ -436,6 +471,15 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
     )
   }
 
+  if (view === 'invite') {
+    return (
+      <InviteView 
+        onBack={() => setView('home')}
+        username={currentUser.username}
+      />
+    )
+  }
+
   if (view === 'survey') {
     return (
       <ActiveSurveyView 
@@ -462,6 +506,13 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
       icon: <History size={24} />, 
       desc: 'View full activity log',
       color: 'bg-indigo-100 text-indigo-600'
+    },
+    {
+      id: 'invite',
+      title: 'Invite a Friend',
+      icon: <Share2 size={24} />,
+      desc: 'Share & earn rewards',
+      color: 'bg-pink-100 text-pink-600'
     },
     { 
       id: 'settings',
@@ -504,10 +555,21 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
       {/* Dashboard Header */}
       <header className="bg-slate-900 text-white pt-10 pb-24 px-6 relative overflow-hidden rounded-b-[2.5rem] shadow-lg">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-green-500"></div>
-        <div className="relative z-10 flex justify-between items-start max-w-lg mx-auto">
-          <div>
-            <p className="text-slate-400 text-sm mb-1">Welcome back,</p>
-            <h1 className="text-2xl font-bold">{currentUser.username}</h1>
+        <div className="relative z-10 flex justify-between items-center max-w-lg mx-auto">
+          <div className="flex items-center gap-4">
+             {currentUser.profile?.avatar ? (
+                <div className="w-12 h-12 rounded-full border-2 border-white/20 shadow-lg overflow-hidden flex-shrink-0">
+                    <img src={currentUser.profile.avatar} alt="Profile" className="w-full h-full object-cover" />
+                </div>
+             ) : (
+                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border-2 border-white/10 flex-shrink-0">
+                    <User size={24} className="text-emerald-300" />
+                </div>
+             )}
+             <div>
+               <p className="text-slate-400 text-xs font-medium mb-0.5 uppercase tracking-wide">Welcome back,</p>
+               <h1 className="text-xl font-bold text-white leading-tight">{currentUser.username}</h1>
+             </div>
           </div>
           <button 
             onClick={onLogout}
@@ -533,7 +595,7 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
         </div>
 
         {/* Earnings Card */}
-        <div className="bg-white rounded-2xl p-6 shadow-xl border border-slate-100 relative overflow-hidden transition-all duration-300">
+        <div id="tour-earnings" className="bg-white rounded-2xl p-6 shadow-xl border border-slate-100 relative overflow-hidden transition-all duration-300">
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <Wallet size={120} />
           </div>
@@ -658,6 +720,7 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
 
         {/* Start Survey Action - Navigates to Selection View */}
         <button 
+          id="tour-start-survey"
           onClick={() => {
              // If specifically blocked by earnings, redirect to upgrade
              if (isEarningsLimitReached && currentDailyCap < 1000) {
@@ -821,7 +884,7 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
         </div>
 
         {/* Menu Grid */}
-        <div className="grid gap-4">
+        <div id="tour-menu" className="grid gap-4">
           <h3 className="text-slate-800 font-bold text-lg px-1">Menu</h3>
           {menuItems.map((item) => (
             <button 
@@ -831,6 +894,7 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
                 if (item.id === 'settings') setView('settings');
                 if (item.id === 'help') setView('help');
                 if (item.id === 'history') setView('history');
+                if (item.id === 'invite') setView('invite');
               }}
               className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4 hover:bg-slate-50 transition-colors text-left group"
             >
@@ -846,6 +910,131 @@ export default function Dashboard({ onLogout, currentUser, onUpdateUser }: Dashb
           ))}
         </div>
       </div>
+
+      {/* Tour Overlay */}
+      {tourStep > 0 && (
+         <OnboardingTour
+             step={tourStep}
+             onNext={handleTourNext}
+             onSkip={handleTourSkip}
+         />
+      )}
+    </div>
+  );
+}
+
+function OnboardingTour({ step, onNext, onSkip }: { step: number, onNext: () => void, onSkip: () => void }) {
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+
+  const steps = [
+    {
+      id: 'tour-earnings',
+      title: 'Track Your Cash',
+      description: 'See your total balance here. Once you hit KES 5,000, you can withdraw instantly to M-Pesa.',
+      position: 'bottom'
+    },
+    {
+      id: 'tour-start-survey',
+      title: 'Start Earning',
+      description: 'Tap this button to see available surveys. New opportunities are added daily based on your profile.',
+      position: 'top'
+    },
+    {
+      id: 'tour-menu',
+      title: 'Your Toolkit',
+      description: 'Access your profile, settings, history, and referral links from this menu.',
+      position: 'top'
+    }
+  ];
+
+  const currentStep = steps[step - 1];
+
+  useLayoutEffect(() => {
+    const updatePosition = () => {
+      const element = document.getElementById(currentStep.id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Give a little time for scroll to finish
+        setTimeout(() => {
+            const rect = element.getBoundingClientRect();
+            setTargetRect(rect);
+        }, 500); 
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition);
+    };
+  }, [step, currentStep.id]);
+
+  if (!targetRect) return null;
+
+  const isTop = currentStep.position === 'top';
+  const tooltipStyle: React.CSSProperties = isTop 
+    ? { bottom: window.innerHeight - targetRect.top + 20, left: targetRect.left + (targetRect.width / 2) - 150 } 
+    : { top: targetRect.bottom + 20, left: targetRect.left + (targetRect.width / 2) - 150 };
+
+  // Mobile adjustment: clamp left
+  if (typeof window !== 'undefined') {
+      const leftVal = parseFloat((tooltipStyle.left || 0).toString());
+      if (leftVal < 10) tooltipStyle.left = 10;
+      if (leftVal > window.innerWidth - 310) tooltipStyle.left = window.innerWidth - 310;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col">
+       {/* Spotlight Border */}
+       <div 
+         className="absolute transition-all duration-500 ease-in-out border-emerald-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.75)] rounded-xl pointer-events-none"
+         style={{
+           top: targetRect.top - 5,
+           left: targetRect.left - 5,
+           width: targetRect.width + 10,
+           height: targetRect.height + 10,
+           borderWidth: '2px',
+           zIndex: 50
+         }}
+       />
+
+       {/* Tooltip Card */}
+       <div 
+         className="absolute w-[300px] max-w-[90vw] bg-white p-5 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in duration-300 flex flex-col gap-3"
+         style={tooltipStyle}
+       >
+         <div className="flex justify-between items-start">
+             <h3 className="font-bold text-slate-800 text-lg">{currentStep.title}</h3>
+             <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                 {step} / {steps.length}
+             </span>
+         </div>
+         <p className="text-slate-600 text-sm leading-relaxed">
+             {currentStep.description}
+         </p>
+         <div className="flex gap-3 mt-2">
+             <button 
+                onClick={onSkip}
+                className="flex-1 py-2 text-slate-500 font-medium text-sm hover:bg-slate-50 rounded-lg"
+             >
+                Skip
+             </button>
+             <button 
+                onClick={onNext}
+                className="flex-1 py-2 bg-emerald-600 text-white font-bold text-sm rounded-lg hover:bg-emerald-700 shadow-md shadow-emerald-100"
+             >
+                {step === steps.length ? 'Finish' : 'Next'}
+             </button>
+         </div>
+         
+         {/* Arrow pointing to element */}
+         <div 
+            className={`absolute w-4 h-4 bg-white transform rotate-45 ${isTop ? '-bottom-2' : '-top-2'} left-1/2 -ml-2`}
+         ></div>
+       </div>
     </div>
   );
 }
@@ -994,7 +1183,6 @@ interface SurveySelectionViewProps {
 function SurveySelectionView({ onBack, surveys, onSelect, isLoading }: SurveySelectionViewProps) {
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
-       {/* Selection Header */}
        <header className="bg-white px-4 py-4 shadow-sm sticky top-0 z-20">
          <div className="max-w-lg mx-auto flex items-center gap-4">
            <button 
@@ -1008,7 +1196,6 @@ function SurveySelectionView({ onBack, surveys, onSelect, isLoading }: SurveySel
          </div>
        </header>
        
-       {/* Loading Overlay */}
        {isLoading && (
          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-white">
             <Loader2 size={48} className="animate-spin mb-4 text-emerald-400" />
@@ -1133,10 +1320,40 @@ function ActiveSurveyView({ questions, onComplete, onCancel, onReward, title }: 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [earnedAmount, setEarnedAmount] = useState<number | null>(null);
 
+  const [timeLeft, setTimeLeft] = useState(45);
+  const [isPaused, setIsPaused] = useState(false);
+
   const question = questions[currentIndex];
   const total = questions.length;
   const progress = ((currentIndex + 1) / total) * 100;
   const hasAnswered = !!answers[question.id];
+
+  // Reset timer on question change
+  useEffect(() => {
+    setTimeLeft(45);
+    setIsPaused(false);
+  }, [currentIndex]);
+
+  // Timer Countdown Logic
+  useEffect(() => {
+    if (isSubmitting || earnedAmount !== null || isPaused) return;
+
+    if (timeLeft === 0) {
+      setIsPaused(true);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeLeft, isPaused, isSubmitting, earnedAmount]);
+
+  const handleResume = () => {
+    setTimeLeft(45);
+    setIsPaused(false);
+  };
 
   const handleOptionSelect = (option: string) => {
     setAnswers(prev => ({ ...prev, [question.id]: option }));
@@ -1193,7 +1410,7 @@ function ActiveSurveyView({ questions, onComplete, onCancel, onReward, title }: 
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20 flex flex-col">
+    <div className="min-h-screen bg-slate-50 pb-20 flex flex-col relative">
        {/* Survey Header */}
        <header className="bg-white px-4 py-4 shadow-sm sticky top-0 z-10">
          <div className="max-w-lg mx-auto flex flex-col gap-2">
@@ -1206,16 +1423,29 @@ function ActiveSurveyView({ questions, onComplete, onCancel, onReward, title }: 
                 Question {currentIndex + 1} of {total}
               </span>
             </div>
-             <button 
-               onClick={() => {
-                 if(confirm("Are you sure you want to exit? Your progress will be lost.")) {
-                   onCancel();
-                 }
-               }}
-               className="text-slate-400 hover:text-red-500 transition-colors"
-             >
-               <X size={20} />
-             </button>
+             
+            <div className="flex items-center gap-3">
+                 {/* Timer Widget */}
+                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors border ${
+                     timeLeft <= 10 ? 'bg-red-50 text-red-600 border-red-100 animate-pulse' : 
+                     timeLeft <= 20 ? 'bg-amber-50 text-amber-600 border-amber-100' : 
+                     'bg-slate-50 text-slate-600 border-slate-100'
+                 }`}>
+                     <Timer size={14} />
+                     <span className="tabular-nums">{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}</span>
+                 </div>
+
+                 <button 
+                   onClick={() => {
+                     if(confirm("Are you sure you want to exit? Your progress will be lost.")) {
+                       onCancel();
+                     }
+                   }}
+                   className="text-slate-400 hover:text-red-500 transition-colors"
+                 >
+                   <X size={20} />
+                 </button>
+            </div>
            </div>
            {/* Progress Bar */}
            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden w-full">
@@ -1227,7 +1457,26 @@ function ActiveSurveyView({ questions, onComplete, onCancel, onReward, title }: 
          </div>
        </header>
 
-       <main className="flex-grow max-w-lg mx-auto w-full px-4 py-8 flex flex-col">
+       <main className="flex-grow max-w-lg mx-auto w-full px-4 py-8 flex flex-col relative">
+          {/* Pause Overlay */}
+          {isPaused && (
+            <div className="absolute inset-0 z-50 bg-slate-50/90 backdrop-blur-sm flex items-center justify-center p-6">
+                <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center animate-in zoom-in duration-300 border border-slate-100">
+                    <div className="mx-auto w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4 text-amber-600 shadow-inner">
+                        <PauseCircle size={32} />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800 mb-2">Survey Paused</h2>
+                    <p className="text-slate-500 mb-6 text-sm">Time ran out for this question. Are you still there?</p>
+                    <button 
+                        onClick={handleResume}
+                        className="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                    >
+                        <Play size={18} fill="currentColor" /> Resume Survey
+                    </button>
+                </div>
+            </div>
+          )}
+
           {isSubmitting ? (
              <div className="flex-grow flex flex-col items-center justify-center text-center animate-in fade-in">
                 <div className="bg-emerald-50 p-6 rounded-full mb-6">
@@ -1283,4 +1532,120 @@ function ActiveSurveyView({ questions, onComplete, onCancel, onReward, title }: 
        </main>
     </div>
   );
+}
+
+interface InviteViewProps {
+  onBack: () => void;
+  username: string;
+}
+
+function InviteView({ onBack, username }: InviteViewProps) {
+    // Generate dynamic link based on current domain/origin
+    // We prefer window.location.origin + pathname to avoid stacking query parameters
+    const baseUrl = typeof window !== 'undefined' 
+        ? `${window.location.origin}${window.location.pathname}` 
+        : 'https://globalsurveys.co.ke';
+        
+    const link = `${baseUrl}?ref=${username}`;
+    
+    const message = `Join me on Global Online Survey Market! Register using my link to start earning: ${link}`;
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(link);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleWhatsApp = () => {
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    };
+
+    const handleSMS = () => {
+        // iOS uses & body=, Android uses ?body=
+        const ua = navigator.userAgent.toLowerCase();
+        const separator = (ua.indexOf('iphone') > -1 || ua.indexOf('ipad') > -1) ? '&' : '?';
+        const url = `sms:${separator}body=${encodeURIComponent(message)}`;
+        window.location.href = url;
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-50 pb-20">
+            <header className="bg-white shadow-sm sticky top-0 z-10">
+                <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-4">
+                    <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-600 transition-colors">
+                        <ArrowLeft size={20} />
+                    </button>
+                    <h1 className="text-xl font-bold text-slate-800">Invite Friends</h1>
+                </div>
+            </header>
+
+            <main className="max-w-lg mx-auto px-4 py-8">
+                <div className="text-center mb-8">
+                     <div className="w-20 h-20 bg-pink-50 rounded-full flex items-center justify-center mx-auto mb-4 text-pink-500">
+                         <Share2 size={40} />
+                     </div>
+                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Invite & Earn</h2>
+                     <p className="text-slate-500 text-sm max-w-xs mx-auto">
+                        Share your unique link with friends. Earn KES 50 for every friend who joins and completes their first survey!
+                     </p>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-6">
+                    {/* Copy Link Section */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Your Referral Link</label>
+                        <div className="flex gap-2">
+                            <div className="flex-grow bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm text-slate-600 truncate font-mono select-all">
+                                {link}
+                            </div>
+                            <button 
+                                onClick={handleCopy}
+                                className="bg-slate-900 text-white px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center shadow-sm"
+                            >
+                                {copied ? <Check size={20} className="text-emerald-400" /> : <Copy size={20} />}
+                            </button>
+                        </div>
+                        {copied && (
+                             <p className="text-xs text-emerald-600 font-medium mt-2 flex items-center gap-1 justify-center animate-in fade-in slide-in-from-top-1">
+                                <CheckCircle2 size={12} /> Link copied to clipboard!
+                             </p>
+                        )}
+                    </div>
+
+                    <div className="relative flex py-2 items-center">
+                        <div className="flex-grow border-t border-slate-100"></div>
+                        <span className="flex-shrink-0 mx-4 text-slate-300 text-xs font-bold uppercase tracking-wider">Or Share Via</span>
+                        <div className="flex-grow border-t border-slate-100"></div>
+                    </div>
+
+                    {/* Share Buttons */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <button 
+                            onClick={handleWhatsApp}
+                            className="flex flex-col items-center justify-center gap-2 bg-[#25D366]/10 hover:bg-[#25D366]/20 border border-[#25D366]/20 py-4 rounded-xl transition-colors group"
+                        >
+                            <MessageCircle size={32} className="text-[#25D366] group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-bold text-[#25D366] darken-10">WhatsApp</span>
+                        </button>
+
+                        <button 
+                            onClick={handleSMS}
+                            className="flex flex-col items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 border border-blue-100 py-4 rounded-xl transition-colors group"
+                        >
+                            <Smartphone size={32} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                            <span className="text-sm font-bold text-blue-600">SMS Message</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-8 bg-slate-100 rounded-xl p-4 text-center">
+                    <p className="text-xs text-slate-500 font-medium">
+                        Friends must verify their account to qualify. Terms and conditions apply.
+                    </p>
+                </div>
+            </main>
+        </div>
+    )
 }

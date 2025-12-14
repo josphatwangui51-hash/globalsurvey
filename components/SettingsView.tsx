@@ -383,45 +383,55 @@ function LegalDocumentView({ type, onBack }: { type: 'privacy' | 'terms', onBack
                         {isPrivacy ? (
                             <>
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">1. Information Collection</h3>
-                                <p className="text-slate-600 mb-4">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     We collect information that you provide directly to us, including your name, email address, phone number, and payment information (M-Pesa transaction codes). We may also collect demographic data to match you with suitable surveys.
                                 </p>
 
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">2. Use of Information</h3>
-                                <p className="text-slate-600 mb-4">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     We use the information we collect to operate, maintain, and provide the features of the Global Online Survey Market. This includes verifying payments, processing withdrawals, and sending you survey invitations.
                                 </p>
 
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">3. Data Sharing</h3>
-                                <p className="text-slate-600 mb-4">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     We do not sell your personal contact information. We may share anonymized demographic data with our survey partners to check for eligibility.
                                 </p>
 
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">4. Security</h3>
-                                <p className="text-slate-600">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     We take reasonable measures to help protect information about you from loss, theft, misuse and unauthorized access, disclosure, alteration and destruction.
+                                </p>
+
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">5. Cookies</h3>
+                                <p className="text-slate-600 mb-4 leading-relaxed">
+                                    We use cookies to enhance your experience, analyze traffic, and personalize content. By using our website, you consent to our use of cookies.
                                 </p>
                             </>
                         ) : (
                             <>
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">1. Acceptance of Terms</h3>
-                                <p className="text-slate-600 mb-4">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     By accessing or using the Global Online Survey Market, you agree to be bound by these Terms of Service. If you do not agree, you may not access the service.
                                 </p>
 
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">2. Registration & Fees</h3>
-                                <p className="text-slate-600 mb-4">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     Access to the platform requires a one-time registration fee of KES 49. This fee is non-refundable and covers administrative costs for account verification.
                                 </p>
 
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">3. User Conduct</h3>
-                                <p className="text-slate-600 mb-4">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     You agree to provide accurate and truthful answers in all surveys. Fraudulent activity, including the use of automated bots or providing false information, will result in immediate account termination and forfeiture of earnings.
                                 </p>
 
                                 <h3 className="text-lg font-bold text-slate-800 mb-2">4. Earnings & Withdrawals</h3>
-                                <p className="text-slate-600">
+                                <p className="text-slate-600 mb-4 leading-relaxed">
                                     Earnings are credited to your wallet upon successful completion of surveys. Withdrawals are processed via M-Pesa. Minimum withdrawal thresholds may apply.
+                                </p>
+
+                                <h3 className="text-lg font-bold text-slate-800 mb-2">5. Termination</h3>
+                                <p className="text-slate-600 mb-4 leading-relaxed">
+                                    We reserve the right to terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.
                                 </p>
                             </>
                         )}
